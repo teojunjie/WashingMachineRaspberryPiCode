@@ -3,16 +3,33 @@ import time
 import requests
 
 # Defining GPIO pins configuration
-s2 = 23
-s3 = 24
-signal = 25
+s2 = 20
+s3 = 16
+signal = 21
 NUM_CYCLES = 10
-redPin = 8
-greenPin = 7
-bluePin = 1
+redPin = 13
+greenPin = 19
+bluePin = 26
+PIRPin = 4
+VIBPin = 15
 
 # Defining the api-endpoint 
 API_ENDPOINT = "https://washingmachineserverke7.herokuapp.com/machineStatus"
+
+# Defining data packets
+dataON = { "block" : "GH",
+         "machineId" : "1",
+         "machineStatus" : "Available",
+         "machineBackgroundColor" : "green",
+         "text" : "Washing Machine 1"
+       }
+
+dataOFF = { "block" : "GH",
+            "machineId" : "1",
+            "machineStatus" : "Unavailable",
+            "machineBackgroundColor" : "red",
+            "text" : "Washing Machine 1"
+          }
 
 def setup():
   print("Setting GPIO Pins\n")
@@ -23,6 +40,8 @@ def setup():
   GPIO.setup(redPin, GPIO.OUT)
   GPIO.setup(greenPin, GPIO.OUT)
   GPIO.setup(bluePin, GPIO.OUT)
+  GPIO.setup(PIRPin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+  GPIO.setup(VIBPin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def detectRed() :
   GPIO.output(s2,GPIO.LOW)
@@ -117,6 +136,19 @@ def lightLED(color):
     GPIO.output(redPin, GPIO.HIGH)
     GPIO.output(greenPin, GPIO.HIGH)
 
+def detectMovement() :
+  i = GPIO.input(PIRPin)
+  if i == 0 :
+    print("No movement detected")
+  else : 
+    print("Movement detected")
+
+def detectVibration() :
+  v = GPIO.input(VIBPin)
+  if v == 0 :
+    print("No vibration detected")
+  else :
+    print("Vibration detected")
     
 def loop():
 
@@ -124,29 +156,31 @@ def loop():
     color = getCorrectColor()
     sendPostRequest(color)
     lightLED(color)
+    detectMovement()
+    detectVibration()
+    time.sleep(0.3)
 
 
 def sendPostRequest(color):
 
-  if color == "GREEN" :
+  if color == "RED" :
 
     print("Washing machine available")
-    # data to be sent to api 
-    data = { "machineName" : "WashingMachine1",
-           "machineStatus" : "ON"
-         }
-        
-    # sending post request and saving response as response object 
-    response = requests.post(url = API_ENDPOINT, data = data) 
+    print("Sending ON post request")
 
-    # extracting response text 
-    message = response.text 
-    print("The response message is: %s"%message)
+    response = requests.post(url = API_ENDPOINT, data = dataON) 
 
   else :
+    
     print("Washing machine unavailable")
+    print("Sending OFF post request")
+
+    response = requests.post(url = API_ENDPOINT, data = dataOFF) 
         
-        
+  message = response.text 
+  print("The response message is: %s"%message)    
+
+
   
 def endprogram():
     GPIO.cleanup()
