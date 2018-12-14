@@ -11,7 +11,15 @@ import fcntl
 import struct
 import time
 from time import gmtime, strftime
+from socketIO_client import SocketIO, LoggingNamespace
 
+from socketio_client.manager import Manager
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+import gevent
+from gevent import monkey;
 
 # Defining GPIO pins configuration
 s2 = 20
@@ -84,6 +92,8 @@ def setup():
   GPIO.setup(LCD_D5, GPIO.OUT) # DB5
   GPIO.setup(LCD_D6, GPIO.OUT) # DB6
   GPIO.setup(LCD_D7, GPIO.OUT) # DB7
+
+  monkey.patch_socket()
 
   print("Initializing display")
   # Initialise display
@@ -304,9 +314,36 @@ def lcd_string(message,line):
 def endprogram():
     GPIO.cleanup()
 
+def on_connect():
+    print('connect')
+
+def on_disconnect():
+    print('disconnect')
+
+def on_reconnect():
+    print('reconnect')
+
+def on_aaa_response(*args):
+    print('on_aaa_response', args)
+
+
+
 if __name__=='__main__':
     
     setup()
+    io = Manager('https',API_ENDPOINT,44273,auto_connect=False)
+    chat = io.socket('/chat')
+
+    @chat.on_connect()
+    def chat_connect():
+        chat.emit("Hello")
+
+    @chat.on('welcome')
+    def chat_welcome():
+        chat.emit("Thanks!")
+
+    io.connect()
+    gevent.wait()
 
     try:
         loop()
