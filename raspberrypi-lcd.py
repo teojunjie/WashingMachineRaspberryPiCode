@@ -139,7 +139,7 @@ def main():
     print("Exiting inner while loop")
     
     # Display CPU temperature
-    lcd_string("CPU temperature:",LCD_LINE_1)
+    lcd_string("CPU temperature: ",LCD_LINE_1)
 
     textCPU = getCPUtemperature()+"C"
     print("CPU temperature" + textCPU)

@@ -21,8 +21,6 @@ NUM_CYCLES = 10
 redPin = 13
 greenPin = 19
 bluePin = 26
-PIRPin = 4
-VIBPin = 15
 
 ## Define GPIO to LCD mapping
 LCD_RS = 7
@@ -66,18 +64,16 @@ dataOFF = { "block" : "GH",
 def setup():
   print("Setting GPIO Pins\n")
   GPIO.setmode(GPIO.BCM)
+  GPIO.setwarnings(False)
+
   GPIO.setup(signal,GPIO.IN, pull_up_down=GPIO.PUD_UP)
   GPIO.setup(s2,GPIO.OUT)
   GPIO.setup(s3,GPIO.OUT)
   GPIO.setup(redPin, GPIO.OUT)
   GPIO.setup(greenPin, GPIO.OUT)
   GPIO.setup(bluePin, GPIO.OUT)
-  GPIO.setup(PIRPin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-  GPIO.setup(VIBPin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
   # Setting up GPIO pins for LCD
-  GPIO.setwarnings(False)
-  GPIO.setmode(GPIO.BCM)       # Use BCM GPIO numbers
   GPIO.setup(LCD_E, GPIO.OUT)  # E
   GPIO.setup(LCD_RS, GPIO.OUT) # RS
   GPIO.setup(LCD_D4, GPIO.OUT) # DB4
@@ -134,15 +130,12 @@ def detectColor():
   green = detectGreen()
   
   if green < red and blue < red :
-    #print("Red object detected")
     return "RED"
 
   elif red < green and blue < green :
-    #print("Green object detected")
     return "GREEN"
 
   elif green < blue and red < blue :
-    #print("Blue object detected")
     return "BLUE"
     
       
@@ -154,17 +147,13 @@ def getCorrectColor():
   
   for i in range(20):
     color = detectColor()
-    #lightLED(color)
-    #print("Color detected is " + color)
     if color in objectColorDict :
       objectColorDict[color] += 1
-
     else :
       objectColorDict[color] = 1
 
-  print(objectColorDict)
   correctColor = max(objectColorDict.keys(), key = (lambda k : objectColorDict[k]))
-  print("Correct color detected : " + correctColor)
+  print("Color detected : " + correctColor)
   return correctColor      
 
 def lightLED(color):
@@ -182,20 +171,6 @@ def lightLED(color):
     GPIO.output(bluePin, GPIO.LOW)
     GPIO.output(redPin, GPIO.HIGH)
     GPIO.output(greenPin, GPIO.HIGH)
-
-def detectMovement() :
-  i = GPIO.input(PIRPin)
-  if i == 0 :
-    print("No movement detected")
-  else : 
-    print("Movement detected")
-
-def detectVibration() :
-  v = GPIO.input(VIBPin)
-  if v == 0 :
-    print("No vibration detected")
-  else :
-    print("Vibration detected")
     
 def loop():
 
@@ -205,25 +180,16 @@ def loop():
     lcd_string(color,LCD_LINE_2)
     sendPostRequest(color)
     lightLED(color)
-    detectMovement()
-    detectVibration()
     time.sleep(0.3)
-
 
 def sendPostRequest(color):
 
   if color == "RED" :
-
     print("Washing machine available")
-    print("Sending ON post request")
-    
     response = requests.post(url = API_ENDPOINT, data = dataON) 
 
-  else :
-    
+  else :    
     print("Washing machine unavailable")
-    print("Sending OFF post request")
-
     response = requests.post(url = API_ENDPOINT, data = dataOFF) 
         
   message = response.text 
