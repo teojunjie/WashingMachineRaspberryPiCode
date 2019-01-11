@@ -17,6 +17,11 @@ from time import gmtime, strftime
 s2 = 20
 s3 = 16
 signal = 21
+
+washingMachine2_s2 = 0
+washingMachine2_s3 = 5
+washingMachine2_signal = 6
+
 NUM_CYCLES = 10
 redPin = 13
 greenPin = 19
@@ -46,20 +51,6 @@ E_DELAY = 0.0005
 # Defining the api-endpoint 
 API_ENDPOINT = "https://washingmachineserverke7.herokuapp.com/machineStatus"
 
-# Defining data packets
-dataON = { "block" : "GH",
-         "machineId" : "1",
-         "machineStatus" : "Available",
-         "machineBackgroundColor" : "green",
-         "text" : "Washing Machine 1"
-       }
-
-dataOFF = { "block" : "GH",
-            "machineId" : "1",
-            "machineStatus" : "Unavailable",
-            "machineBackgroundColor" : "red",
-            "text" : "Washing Machine 1"
-          }
 
 def setup():
   print("Setting GPIO Pins\n")
@@ -69,6 +60,12 @@ def setup():
   GPIO.setup(signal,GPIO.IN, pull_up_down=GPIO.PUD_UP)
   GPIO.setup(s2,GPIO.OUT)
   GPIO.setup(s3,GPIO.OUT)
+
+  
+  GPIO.setup(washingMachine2_signal,GPIO.IN, pull_up_down=GPIO.PUD_UP)
+  GPIO.setup(washingMachine2_s2,GPIO.OUT)
+  GPIO.setup(washingMachine2_s3,GPIO.OUT)
+
   GPIO.setup(redPin, GPIO.OUT)
   GPIO.setup(greenPin, GPIO.OUT)
   GPIO.setup(bluePin, GPIO.OUT)
@@ -86,7 +83,7 @@ def setup():
   lcd_init()
 
 
-def detectRed() :
+def detectRed(s2, s3, signal) :
   GPIO.output(s2,GPIO.LOW)
   GPIO.output(s3,GPIO.LOW)
   time.sleep(0.3)
@@ -98,7 +95,7 @@ def detectRed() :
   return red
 
 
-def detectBlue():
+def detectBlue(s2, s3, signal):
   GPIO.output(s2,GPIO.LOW)
   GPIO.output(s3,GPIO.HIGH)
   time.sleep(0.3)
@@ -110,7 +107,7 @@ def detectBlue():
   return blue
 
 
-def detectGreen(): 
+def detectGreen(s2, s3, signal): 
   GPIO.output(s2,GPIO.HIGH)
   GPIO.output(s3,GPIO.HIGH)
   time.sleep(0.3)
@@ -123,11 +120,11 @@ def detectGreen():
 
   
     
-def detectColor():
+def detectColor(s2, s3, signal):
 
-  red = detectRed()
-  blue = detectBlue()
-  green = detectGreen()
+  red = detectRed(s2, s3, signal)
+  blue = detectBlue(s2, s3, signal)
+  green = detectGreen(s2, s3, signal)
   
   if green < red and blue < red :
     return "RED"
@@ -139,14 +136,12 @@ def detectColor():
     return "BLUE"
     
       
-def getCorrectColor():
-
-  print("Sensing color of object...")
+def getCorrectColor(s2, s3, signal):
   
   objectColorDict = {}
   
   for i in range(20):
-    color = detectColor()
+    color = detectColor(s2, s3, signal)
     if color in objectColorDict :
       objectColorDict[color] += 1
     else :
@@ -175,15 +170,38 @@ def lightLED(color):
 def loop():
 
   while(1):
-    color = getCorrectColor()
-    lcd_string("Color detected :",LCD_LINE_1)
-    lcd_string(color,LCD_LINE_2)
-    sendPostRequest(color)
-    lightLED(color)
+    sensorColorDetection(s2, s3, signal, 1)
+    sensorColorDetection(washingMachine2_s2, washingMachine2_s3, washingMachine2_signal, 2)
+    
     time.sleep(0.3)
 
-def sendPostRequest(color):
+def sensorColorDetection(s2, s3, signal, sensorNumber) :
+    print("Sensing color of object from sensor " + str(sensorNumber))
+    color = getCorrectColor(s2, s3, signal)
+    lcd_string("Color detected :",LCD_LINE_1)
+    lcd_string(color,LCD_LINE_2)
+    sendPostRequest(color , sensorNumber)
+    lightLED(color)
 
+def sendPostRequest(color, machineNumber):
+
+  # Defining data packets
+  dataON = { "block" : "GH",
+           "machineId" : str(machineNumber),
+           "machineStatus" : "Available",
+           "machineBackgroundColor" : "green",
+           "text" : "Washing Machine " + str(machineNumber)
+         }
+
+  dataOFF = { "block" : "GH",
+              "machineId" : str(machineNumber),
+              "machineStatus" : "Unavailable",
+              "machineBackgroundColor" : "red",
+              "text" : "Washing Machine " + str(machineNumber)
+            }
+
+  print(dataON)
+  print(dataOFF)
   if color == "RED" :
     print("Washing machine available")
     response = requests.post(url = API_ENDPOINT, data = dataON) 
